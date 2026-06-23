@@ -1,4 +1,4 @@
-## 1. Cấu trúc file trong project
+##  Cấu trúc file 
 
 ```text
 data
