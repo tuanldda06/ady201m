@@ -131,7 +131,7 @@ erDiagram
 
 ---
 
-## 4. Mô tả các bảng
+## 4. Mô tả các bảng của database
 
 ### 4.1. Bảng `raw_zillow_listings`
 
