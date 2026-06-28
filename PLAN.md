@@ -18,12 +18,12 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 
 # 2. BẢNG THÀNH VIÊN VÀ PHÂN CÔNG NHIỆM VỤ
 
-| STT | Họ và tên    | MSSV     | Vai trò                                         | Nhiệm vụ chi tiết                                                                                                                                                                      | Output dự kiến                                                              |
-| --- | ------------ | -------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| 1   | Thành viên 1 | ........ | Data Engineer                                   | Thu thập dữ liệu, kiểm tra chất lượng dữ liệu, thiết kế cấu trúc dữ liệu, xử lý dữ liệu thiếu, chuẩn hóa dữ liệu, lưu trữ dataset và quản lý GitHub.                                   | Dataset gốc, Dataset đã làm sạch, Source code tiền xử lý                    |
-| 2   | Thành viên 2 | ........ | Data Analyst                                    | Xây dựng Business Questions, thực hiện EDA, trực quan hóa dữ liệu, phân tích Insight, viết báo cáo phần phân tích dữ liệu và hỗ trợ thiết kế Slide thuyết trình.                       | Biểu đồ, Insight, Báo cáo EDA, Slide                                        |
-| 3   | Thành viên 3 | ........ | Data Scientist                                  | Phân tích thống kê, Feature Engineering, xây dựng các mô hình hồi quy (Linear Regression, Decision Tree, Random Forest), tối ưu Hyperparameter, đánh giá mô hình bằng MAE, RMSE và R². | Notebook xây dựng mô hình, Báo cáo đánh giá mô hình                         |
-| 4   | Thành viên 4 | ........ | Machine Learning Engineer / Project Coordinator | Tổng hợp code, kiểm tra tính nhất quán của toàn bộ dự án, hỗ trợ tối ưu mô hình, chuẩn bị phần trình bày, tổng hợp báo cáo cuối cùng và quản lý tiến độ nhóm.                          | Notebook hoàn chỉnh, Báo cáo tổng hợp, Slide thuyết trình, Source code cuối |
+| STT | Họ và tên    | MSSV     | Vai trò                             | Nhiệm vụ chi tiết                                                                                                                                        | Output dự kiến                                            |
+| --- | ------------ | -------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | Thành viên 1 | ........ | Data Collector                      | Cào dữ liệu, thu thập dữ liệu từ nguồn phù hợp, kiểm tra định dạng ban đầu, lưu trữ dataset gốc và quản lý nguồn dữ liệu.                                | Dataset gốc, file dữ liệu ban đầu, mô tả nguồn dữ liệu    |
+| 2   | Thành viên 2 | ........ | Data Preprocessing                  | Xử lý dữ liệu thiếu, loại bỏ dữ liệu trùng lặp, phát hiện và xử lý outlier, chuyển đổi kiểu dữ liệu, mã hóa biến phân loại và chuẩn hóa dữ liệu khi cần. | Dataset đã làm sạch, Notebook tiền xử lý                  |
+| 3   | Thành viên 3 | ........ | Data Analyst                        | Phân tích thống kê mô tả, thực hiện EDA, trực quan hóa dữ liệu, phân tích tương quan, rút ra insight và hỗ trợ viết phần báo cáo phân tích.              | Biểu đồ, Insight, Báo cáo EDA                             |
+| 4   | Thành viên 4 | ........ | Machine Learning Engineer / Modeler | Xây dựng mô hình hồi quy, chia tập train/test, huấn luyện và so sánh các mô hình, tối ưu hyperparameter, đánh giá kết quả bằng các chỉ số phù hợp.       | Notebook mô hình, Bảng so sánh mô hình, Mô hình cuối cùng |
 
 ---
 
@@ -37,19 +37,19 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 
 * Xác định mục tiêu bài toán.
 * Xây dựng các Business Questions.
-* Thu thập dữ liệu giá nhà.
+* Cào và thu thập dữ liệu giá nhà.
 * Tìm hiểu ý nghĩa của các thuộc tính.
-* Kiểm tra số lượng mẫu và chất lượng dữ liệu.
+* Kiểm tra số lượng mẫu và chất lượng dữ liệu ban đầu.
 
 **Nhân sự chính**
 
 * Thành viên 1
-* Thành viên 2
+* Thành viên 3
 
 **Phân công cụ thể**
 
-* **Thành viên 1:** Thu thập dữ liệu, kiểm tra định dạng, lưu trữ dataset ban đầu.
-* **Thành viên 2:** Xây dựng Business Questions, xác định các vấn đề cần phân tích từ dữ liệu.
+* **Thành viên 1:** Cào dữ liệu, thu thập dữ liệu từ nguồn phù hợp, kiểm tra định dạng và lưu trữ dataset gốc.
+* **Thành viên 3:** Xây dựng Business Questions, xác định các vấn đề cần phân tích từ dữ liệu.
 
 **Output**
 
@@ -76,13 +76,13 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 
 **Nhân sự chính**
 
-* Thành viên 1
-* Thành viên 3
+* Thành viên 2
+* Thành viên 4
 
 **Phân công cụ thể**
 
-* **Thành viên 1:** Làm sạch dữ liệu, xử lý missing values, duplicate, outlier và chuẩn hóa dữ liệu đầu vào.
-* **Thành viên 3:** Kiểm tra ảnh hưởng của các bước tiền xử lý đến dữ liệu, hỗ trợ feature engineering và chuẩn bị dữ liệu cho mô hình.
+* **Thành viên 2:** Làm sạch dữ liệu, xử lý missing values, duplicate, outlier và chuẩn hóa dữ liệu đầu vào.
+* **Thành viên 4:** Kiểm tra ảnh hưởng của các bước tiền xử lý đến dữ liệu, hỗ trợ feature engineering và chuẩn bị dữ liệu cho mô hình.
 
 **Output**
 
@@ -115,13 +115,13 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 
 **Nhân sự chính**
 
-* Thành viên 2
-* Thành viên 4
+* Thành viên 3
+* Thành viên 1
 
 **Phân công cụ thể**
 
-* **Thành viên 2:** Thực hiện EDA, trực quan hóa dữ liệu và rút ra insight chính.
-* **Thành viên 4:** Tổng hợp kết quả EDA, chuẩn hóa nội dung trình bày và hỗ trợ viết phần báo cáo phân tích.
+* **Thành viên 3:** Thực hiện EDA, trực quan hóa dữ liệu và rút ra insight chính.
+* **Thành viên 1:** Hỗ trợ kiểm tra lại dữ liệu gốc, đối chiếu nguồn dữ liệu và bổ sung thông tin mô tả dữ liệu nếu cần.
 
 **Output**
 
@@ -161,13 +161,13 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 
 **Nhân sự chính**
 
-* Thành viên 3
 * Thành viên 4
+* Thành viên 2
 
 **Phân công cụ thể**
 
-* **Thành viên 3:** Xây dựng và đánh giá các mô hình hồi quy, thực hiện tối ưu hyperparameter.
-* **Thành viên 4:** Kiểm tra kết quả mô hình, tổng hợp bảng so sánh, phân tích feature importance và lựa chọn mô hình cuối cùng cùng nhóm.
+* **Thành viên 4:** Xây dựng, huấn luyện và đánh giá các mô hình hồi quy, thực hiện tối ưu hyperparameter.
+* **Thành viên 2:** Hỗ trợ kiểm tra dữ liệu đầu vào cho mô hình, tổng hợp kết quả đánh giá và đối chiếu hiệu quả giữa các mô hình.
 
 **Output**
 
@@ -195,10 +195,10 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 
 **Phân công cụ thể**
 
-* **Thành viên 1:** Cung cấp phần dữ liệu, tiền xử lý và mô tả quy trình làm sạch.
-* **Thành viên 2:** Trình bày phần EDA, insight và trực quan hóa dữ liệu.
-* **Thành viên 3:** Trình bày phần xây dựng mô hình, đánh giá và tối ưu mô hình.
-* **Thành viên 4:** Tổng hợp nội dung, hoàn thiện báo cáo, chỉnh sửa slide và điều phối phần thuyết trình.
+* **Thành viên 1:** Trình bày phần thu thập dữ liệu và mô tả nguồn dữ liệu.
+* **Thành viên 2:** Trình bày phần tiền xử lý và làm sạch dữ liệu.
+* **Thành viên 3:** Trình bày phần EDA, biểu đồ thống kê và insight.
+* **Thành viên 4:** Trình bày phần xây dựng mô hình, đánh giá và tối ưu mô hình.
 
 **Output**
 
