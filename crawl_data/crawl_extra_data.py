@@ -1,3 +1,76 @@
+
+# MỤC ĐÍCH:
+#   File này dùng để "làm giàu dữ liệu" cho dataset nhà đất lấy từ Zillow.
+#   Nghĩa là: dữ liệu gốc từ Zillow chỉ có thông tin cơ bản như giá, diện tích,
+#   số phòng ngủ, số phòng tắm, tọa độ... Sau đó code này gọi thêm các nguồn dữ liệu công khai để bổ sung đặc trưng phục vụ mô hình dự đoán giá nhà.
+#
+# CÁC NHÓM FEATURE TRONG 5 BƯỚC CHẠY:
+#   [1/5] Basic Zillow features:
+#      - KHÔNG cào thêm API mới.
+#      - Chỉ tính toán lại từ file Zillow raw đã có sẵn, ví dụ:
+#        price_per_sqft, lot_to_living_ratio, beds_per_bath, log_price...
+#
+#   [2/5] Census + ACS:
+#      - CÓ gọi API ngoài.
+#      - Dùng Census Geocoder để đổi lat/lon -> Census Tract.
+#      - Sau đó gọi ACS 5-year để lấy income, poverty, unemployment...
+#
+#   [3/5] OSM amenities:
+#      - CÓ gọi API ngoài.
+#      - Dùng OpenStreetMap / Overpass API để đếm tiện ích xung quanh nhà.
+#
+#   [4/5] FEMA NRI:
+#      - CÓ gọi API ngoài.
+#      - Dùng mã Census Tract để lấy điểm rủi ro thiên tai từ FEMA.
+#
+#   [5/5] Geo distance:
+#      - KHÔNG cào thêm API mới.
+#      - Tự tính khoảng cách bằng công thức Haversine dựa trên tọa độ nhà
+#        và danh sách tọa độ thành phố/sân bay/bờ biển đã khai báo trong code.
+#
+#
+# CÁC NGUỒN DỮ LIỆU ĐƯỢC DÙNG:
+#   1. Zillow raw data:
+#      - Là file CSV đầu vào đã cào từ Zillow.
+#      - Dùng để lấy price, living area, bedrooms, bathrooms, home type, lat/lon...
+#
+#   2. U.S. Census Geocoder:
+#      - Dùng tọa độ latitude/longitude của từng căn nhà để tìm Census Tract.
+#      - Census Tract giống như một vùng thống kê nhỏ tại Mỹ.
+#      - Việc map tọa độ -> tract giúp chứng minh mỗi căn nhà được nối đúng
+#        với khu vực dân cư tương ứng.
+#
+#   3. ACS 5-year data của U.S. Census:
+#      - Sau khi có tract, code gọi ACS để lấy income, poverty, unemployment,
+#        population, bachelor rate...
+#      - Đây là dữ liệu kinh tế - xã hội chính thức của U.S. Census.
+#
+#   4. OpenStreetMap / Overpass API:
+#      - Dùng tọa độ căn nhà để đếm tiện ích xung quanh như trường học, bệnh viện,
+#        siêu thị, công viên, trạm giao thông công cộng.
+#      - Code dùng bán kính rõ ràng: grocery/park/transit 1km, school 2km,
+#        hospital 3km.
+#
+#   5. FEMA National Risk Index:
+#      - Dùng tract_geoid để lấy điểm rủi ro thiên tai như wildfire, earthquake,
+#        flood.
+#      - Dữ liệu này giúp mô hình có thêm thông tin về rủi ro khu vực.
+#
+#   6. Khoảng cách địa lý tự tính:
+#      - Code dùng công thức Haversine để tính khoảng cách từ căn nhà đến
+#        thành phố lớn, sân bay lớn và bờ biển California.
+#
+# CÁCH CÀO :
+#   - Không ghép dữ liệu theo tên mơ hồ, mà ghép theo tọa độ thật của căn nhà.
+#   - Tọa độ được chuyển sang Census Tract bằng Census Geocoder.
+#   - ACS và FEMA được lấy theo tract_geoid, tức mã vùng thống kê chính thức.
+#   - OSM đếm tiện ích theo khoảng cách thực tế từ tọa độ căn nhà.
+#   - Cuối chương trình có phần "Feature check" để kiểm tra từng feature có được
+#     tạo ra hay không và có bao nhiêu dòng không bị thiếu dữ liệu.
+#   - Có cache để tránh gọi API lặp lại, giúp kết quả ổn định hơn khi chạy lại.
+#
+
+
 import argparse, json, math, os, time, random
 from pathlib import Path
 
@@ -8,11 +81,16 @@ import requests
 CACHE = Path.home() / ".cache" / "zillow_feature_cache_short"
 CACHE.mkdir(parents=True, exist_ok=True)
 
+
 S = requests.Session()
 S.headers.update({"User-Agent": "zillow-feature-enrichment-student-project/1.0"})
 
+# API chính thức của U.S. Census để đổi tọa độ nhà -> Census Tract.
 CENSUS_GEOCODER = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
+# API dữ liệu FEMA National Risk Index theo Census Tract.
 NRI_URL = "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Census_Tracts/FeatureServer/0"
+# Các endpoint Overpass để truy vấn OpenStreetMap.
+# Có nhiều endpoint dự phòng: nếu một endpoint lỗi/quá tải thì thử endpoint khác.
 OVERPASS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
@@ -21,7 +99,6 @@ OVERPASS = [
 
 OSM_SLEEP = 10
 GRID = 2
-
 
 def load_cache(name):
     p = CACHE / name
@@ -35,6 +112,7 @@ def load_cache(name):
 
 def save_cache(name, obj):
     (CACHE / name).write_text(json.dumps(obj, ensure_ascii=False), encoding="utf-8")
+
 
 
 def req_json(url, params=None, data=None, post=False, retries=3, timeout=40):
@@ -59,7 +137,6 @@ def num(x):
     except Exception:
         return np.nan
 
-
 def div(a, b):
     a, b = num(a), num(b)
     return np.nan if pd.isna(a) or pd.isna(b) or b == 0 else a / b
@@ -76,7 +153,6 @@ def latlon(df):
         raise ValueError("Không tìm thấy cột latitude/longitude.")
     return la, lo
 
-
 def hav(lat1, lon1, lat2, lon2):
     R = 6371.0088
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -85,8 +161,23 @@ def hav(lat1, lon1, lat2, lon2):
     return 2 * R * math.asin(math.sqrt(a))
 
 
+# ================================================================
+# [1/5] ADD BASIC ZILLOW FEATURES
+# Tạo feature trực tiếp từ dữ liệu Zillow gốc.
+# Đây không phải dữ liệu cào thêm mà là biến đổi từ các cột có sẵn:
+#   - target_price, log_price
+#   - living_area_sqft, bedrooms, bathrooms
+#   - price_per_sqft
+#   - lot_area_sqft, lot_to_living_ratio
+#   - beds_per_bath
+#   - home_type one-hot encoding
+# ================================================================
 def add_basic(df):
-    print("\n[1/5] Basic Zillow features")
+    # Nó chỉ lấy các cột có sẵn trong file Zillow raw rồi tạo feature mới.
+    # Ví dụ: price_per_sqft = price / living area.
+    # Vì vậy khi trình bày, nên gọi đây là bước "xử lý / biến đổi feature từ Zillow",
+    # không nên gọi là bước "cào dữ liệu ngoài".
+    print("\n[1/5] Basic Zillow features - derived from Zillow raw, not external crawling")
     df = df.copy()
     p = col(df, ["hdpData.homeInfo.price", "price"])
     a = col(df, ["hdpData.homeInfo.livingArea", "area"])
@@ -133,8 +224,22 @@ def add_basic(df):
     return df
 
 
+# ================================================================
+# [2/5] ADD CENSUS + ACS FEATURES
+# Quy trình :
+#   Bước 1: lấy lat/lon của từng căn nhà.
+#   Bước 2: gọi U.S. Census Geocoder để tìm state_fips, county_fips, tract_fips.
+#   Bước 3: tạo tract_geoid = state + county + tract.
+#   Bước 4: dùng tract_geoid đó gọi ACS để lấy dữ liệu kinh tế - xã hội.
+# Vì ghép theo Census Tract chính thức nên có cơ sở địa lý rõ ràng.
+# ================================================================
 def add_census(df, key):
-    print("\n[2/5] Census + ACS")
+    # Bước [2/5] CÓ gọi API ngoài.
+    # Logic kiểm chứng:
+    #   lat/lon của nhà -> Census Geocoder -> tract_geoid chính thức
+    #   tract_geoid -> ACS -> income, poverty, unemployment, population...
+    # Đây là bước cào/ghép dữ liệu kinh tế - xã hội theo đúng vị trí địa lý.
+    print("\n[2/5] Census + ACS - external API crawling")
     df = df.copy()
     la, lo = latlon(df)
     coord_cache = load_cache("coord_to_tract.json")
@@ -232,6 +337,9 @@ def add_census(df, key):
     return df.merge(tract_df, on=[la, lo], how="left")
 
 
+# Tạo câu truy vấn Overpass QL cho OpenStreetMap.
+# Query này tìm các node/way/relation trong bán kính 3km quanh tọa độ nhà.
+# Sau đó code sẽ tự lọc lại theo từng bán kính nhỏ hơn cho từng loại tiện ích.
 def osm_query(lat, lon):
     tags = [('amenity','school'),('amenity','college'),('amenity','university'),('amenity','kindergarten'),
             ('amenity','hospital'),('amenity','clinic'),('amenity','doctors'),('shop','supermarket'),
@@ -246,6 +354,8 @@ def osm_query(lat, lon):
     return "\n".join(lines)
 
 
+# Phân loại object OSM thành nhóm feature dùng cho bài toán giá nhà.
+# Ví dụ: amenity=school -> school, shop=supermarket -> grocery.
 def osm_cat(tags):
     a, s, l = tags.get("amenity"), tags.get("shop"), tags.get("leisure")
     h, p, r = tags.get("highway"), tags.get("public_transport"), tags.get("railway")
@@ -258,12 +368,30 @@ def osm_cat(tags):
     return out
 
 
+# Trả về bộ feature OSM rỗng khi API lỗi hoặc không có dữ liệu.
+# Dùng NaN để phân biệt "không lấy được" với số lượng thật sự bằng 0.
 def empty_osm():
     return {c: np.nan for c in ["school_count_2km","hospital_count_3km","grocery_count_1km","park_count_1km","transit_count_1km"]}
 
 
+# ================================================================
+# [3/5] ADD OPENSTREETMAP AMENITY FEATURES
+# Dùng lat/lon để đếm tiện ích xung quanh căn nhà:
+#   - school_count_2km: số trường học trong 2km
+#   - hospital_count_3km: số bệnh viện/phòng khám trong 3km
+#   - grocery_count_1km: số siêu thị/cửa hàng tiện lợi trong 1km
+#   - park_count_1km: số công viên trong 1km
+#   - transit_count_1km: số điểm giao thông công cộng trong 1km
+# Cách này hợp lý vì giá nhà thường bị ảnh hưởng bởi tiện ích xung quanh.
+# ================================================================
 def add_osm(df, max_points=None):
-    print("\n[3/5] OSM amenities")
+    # Bước [3/5] CÓ gọi API ngoài.
+    # Code gọi OpenStreetMap thông qua Overpass API để đếm tiện ích quanh tọa độ nhà.
+    # Các bán kính được ghi rõ:
+    #   grocery/park/transit: 1km
+    #   school: 2km
+    #   hospital: 3km
+    print("\n[3/5] OSM amenities - external API crawling")
     df = df.copy()
     la, lo = latlon(df)
     df["osm_lat_grid"] = pd.to_numeric(df[la], errors="coerce").round(GRID)
@@ -341,8 +469,18 @@ def add_osm(df, max_points=None):
     return df.merge(osm_df, on=["osm_lat_grid", "osm_lon_grid"], how="left") if not osm_df.empty else df
 
 
+# ================================================================
+# [4/5] ADD FEMA NATIONAL RISK INDEX FEATURES
+# Dùng tract_geoid đã lấy từ Census để gọi FEMA NRI.
+# Các điểm rủi ro được lấy theo cùng Census Tract với căn nhà,
+# nên không phải ghép ngẫu nhiên.
+# ================================================================
 def add_nri(df):
-    print("\n[4/5] FEMA NRI")
+    # Bước [4/5] CÓ gọi API ngoài.
+    # Code dùng tract_geoid đã lấy từ Census để gọi FEMA National Risk Index.
+    # Nhờ vậy rủi ro wildfire/earthquake/flood được ghép theo mã vùng thống kê,
+    # không phải ghép thủ công theo tên địa điểm.
+    print("\n[4/5] FEMA NRI - external API crawling")
     if "tract_geoid" not in df.columns:
         print("    Missing tract_geoid, skip NRI")
         return df
@@ -386,8 +524,23 @@ def add_nri(df):
     return df.merge(nri, on="tract_geoid", how="left")
 
 
+# ================================================================
+# [5/5] ADD GEO DISTANCE FEATURES
+# Tính khoảng cách từ căn nhà đến:
+#   - thành phố lớn gần nhất ở California,
+#   - sân bay lớn gần nhất,
+#   - bờ biển California gần nhất.
+# Khoảng cách được tính bằng Haversine nên có ý nghĩa địa lý thực tế.
+# ================================================================
 def add_geo(df):
-    print("\n[5/5] Geo distance")
+    # GHI CHÚ QUAN TRỌNG:
+    # Bước [5/5] KHÔNG gọi API và KHÔNG cào thêm nguồn mới.
+    # Nó tự tính khoảng cách bằng công thức Haversine từ tọa độ căn nhà đến:
+    #   - thành phố lớn gần nhất ở California,
+    #   - sân bay lớn gần nhất,
+    #   - một số điểm đại diện trên bờ biển California.
+    # Vì vậy đây là feature engineering địa lý, không phải crawling.
+    print("\n[5/5] Geo distance - calculated locally, not external crawling")
     df = df.copy()
     la, lo = latlon(df)
     cities = {"los_angeles":(34.0522,-118.2437), "san_francisco":(37.7749,-122.4194),
@@ -417,18 +570,35 @@ def add_geo(df):
                       pd.get_dummies(df["nearest_major_ca_airport"], prefix="nearest_airport")], axis=1)
 
 
+# ================================================================
+# MAIN PIPELINE
+# Chạy lần lượt 5 nhóm feature:
+#   1) Zillow basic features
+#   2) Census + ACS socioeconomic features
+#   3) OSM amenities features
+#   4) FEMA NRI risk features
+#   5) Geographic distance features
+# Cuối cùng xuất ra CSV đã được làm giàu dữ liệu.
+# ================================================================
 def main():
     p = argparse.ArgumentParser()
+    # File CSV đầu vào: dữ liệu nhà đất thô đã crawl từ Zillow.
     p.add_argument(
     "--input",
     default="/Users/leducanhtuan/Downloads/california_final_raw.csv"
 )
 
+    # File CSV đầu ra: dữ liệu sau khi thêm feature.
+    # Lưu ý: hiện đang để giống input, nghĩa là có thể ghi đè file gốc.
+    # Khi nộp bài nên đổi thành tên khác, ví dụ california_final_enriched.csv.
     p.add_argument(
     "--output",
     default="/Users/leducanhtuan/Downloads/california_final_raw.csv"
 )
+    # Census API key có thể truyền bằng tham số --census-key hoặc biến môi trường CENSUS_API_KEY.
     p.add_argument("--census-key", default=os.getenv("CENSUS_API_KEY"))
+    # Các cờ skip dùng khi muốn test nhanh hoặc API bị lỗi.
+    # Ví dụ: --skip-osm để bỏ phần OSM vì OSM thường chạy lâu nhất.
     p.add_argument("--skip-census", action="store_true")
     p.add_argument("--skip-osm", action="store_true")
     p.add_argument("--skip-nri", action="store_true")
@@ -445,9 +615,11 @@ def main():
     print(f"Output: {a.output}")
     print("=" * 60)
 
+    # Đọc file Zillow raw/enriched ban đầu.
     df = pd.read_csv(a.input)
     print("Loaded:", df.shape)
 
+    # Bắt đầu pipeline thêm feature. Mỗi hàm trả về DataFrame mới có thêm cột.
     df = add_basic(df)
     if not a.skip_census: df = add_census(df, a.census_key)
     else: print("\n[2/5] Skip Census")
@@ -458,6 +630,9 @@ def main():
     if not a.skip_geo: df = add_geo(df)
     else: print("\n[5/5] Skip Geo")
 
+    # Danh sách feature quan trọng cần kiểm tra sau khi crawl.
+    # Khi trình bày với thầy, phần này dùng để chứng minh các cột đã được tạo ra
+    # và có bao nhiêu dòng lấy được dữ liệu thật, không bị thiếu.
     wanted = ["median_household_income","poverty_rate","unemployment_rate","bachelor_or_higher_rate",
               "school_count_2km","hospital_count_3km","grocery_count_1km","park_count_1km","transit_count_1km",
               "wildfire_risk_score","earthquake_risk_score","flood_risk_score"]
@@ -465,6 +640,7 @@ def main():
     for c in wanted:
         print(("OK  " if c in df.columns else "MISS") + f" {c}" + (f": {df[c].notna().sum()}/{len(df)}" if c in df.columns else ""))
 
+    # Tạo thư mục output nếu chưa tồn tại, rồi lưu CSV bằng utf-8-sig để Excel đọc tiếng Việt tốt hơn.
     Path(a.output).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(a.output, index=False, encoding="utf-8-sig")
     print("\nDONE:", df.shape, "->", a.output)
