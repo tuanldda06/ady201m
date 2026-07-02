@@ -93,7 +93,6 @@ SELECT
     s.population,
     s.bachelor_rate,
     s.median_rent_usd,
-    s.area_home_value,
     s.owner_occupied_rate,
     s.population_density,
 
@@ -124,17 +123,27 @@ GO
 
 
 -- ============================================================
--- PHẦN 3: 5 CÂU HỎI PHÂN TÍCH QUAN TRỌNG
+-- PHẦN 3: CÁC CÂU HỎI PHÂN TÍCH QUAN TRỌNG
 -- ============================================================
 
--- Câu hỏi 1: Loại nhà nào có giá trung bình cao nhất?
+-- Câu hỏi 1: Loại nhà nào có giá trung bình và trung vị cao nhất?
 SELECT
     home_type_name,
     COUNT(*) AS total_properties,
     ROUND(AVG(price_usd), 2) AS avg_price,
+    ROUND(MAX(median_price), 2) AS median_price,
     ROUND(MIN(price_usd), 2) AS min_price,
-    ROUND(MAX(price_usd), 2) AS max_price
-FROM dbo.view_property_clean
+    ROUND(MAX(price_usd), 2) AS max_price,
+    ROUND(AVG(price_usd / NULLIF(living_area_sqft, 0)), 2) AS avg_price_per_sqft
+FROM (
+    SELECT
+        home_type_name,
+        price_usd,
+        living_area_sqft,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_usd)
+            OVER (PARTITION BY home_type_name) AS median_price
+    FROM dbo.view_property_clean
+) AS x
 GROUP BY home_type_name
 ORDER BY avg_price DESC;
 GO
@@ -223,4 +232,73 @@ GROUP BY
         ELSE 'Very far from city'
     END
 ORDER BY avg_distance_to_city;
+GO
+
+
+-- Câu hỏi 6: Nhà gần biển có giá cao hơn không?
+SELECT
+    CASE
+        WHEN distance_to_coast < 10 THEN 'Near coast'
+        WHEN distance_to_coast < 25 THEN 'Medium distance'
+        WHEN distance_to_coast < 75 THEN 'Far from coast'
+        ELSE 'Very far from coast'
+    END AS coast_distance_group,
+
+    COUNT(*) AS total_properties,
+    ROUND(AVG(distance_to_coast), 2) AS avg_distance_to_coast,
+    ROUND(AVG(price_usd), 2) AS avg_price,
+    ROUND(MAX(median_price), 2) AS median_price
+FROM (
+    SELECT
+        price_usd,
+        distance_to_coast,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_usd)
+            OVER (
+                PARTITION BY
+                    CASE
+                        WHEN distance_to_coast < 10 THEN 'Near coast'
+                        WHEN distance_to_coast < 25 THEN 'Medium distance'
+                        WHEN distance_to_coast < 75 THEN 'Far from coast'
+                        ELSE 'Very far from coast'
+                    END
+            ) AS median_price
+    FROM dbo.view_property_clean
+) AS x
+GROUP BY
+    CASE
+        WHEN distance_to_coast < 10 THEN 'Near coast'
+        WHEN distance_to_coast < 25 THEN 'Medium distance'
+        WHEN distance_to_coast < 75 THEN 'Far from coast'
+        ELSE 'Very far from coast'
+    END
+ORDER BY avg_distance_to_coast;
+GO
+
+
+-- Câu hỏi 7: Giá trên mỗi sqft thay đổi như thế nào theo loại nhà?
+SELECT
+    home_type_name,
+    COUNT(*) AS total_properties,
+    ROUND(AVG(living_area_sqft), 2) AS avg_living_area_sqft,
+    ROUND(AVG(price_usd / NULLIF(living_area_sqft, 0)), 2) AS avg_price_per_sqft,
+    ROUND(MIN(price_usd / NULLIF(living_area_sqft, 0)), 2) AS min_price_per_sqft,
+    ROUND(MAX(price_usd / NULLIF(living_area_sqft, 0)), 2) AS max_price_per_sqft
+FROM dbo.view_property_clean
+GROUP BY home_type_name
+ORDER BY avg_price_per_sqft DESC;
+GO
+
+
+-- Câu hỏi 8: Các biến kinh tế - xã hội khác nhau thế nào theo phân khúc giá?
+SELECT
+    price_segment,
+    COUNT(*) AS total_properties,
+    ROUND(AVG(price_usd), 2) AS avg_price,
+    ROUND(AVG(median_income_usd), 2) AS avg_income,
+    ROUND(AVG(bachelor_rate), 4) AS avg_bachelor_rate,
+    ROUND(AVG(poverty_rate), 4) AS avg_poverty_rate,
+    ROUND(AVG(median_rent_usd), 2) AS avg_rent
+FROM dbo.view_property_clean
+GROUP BY price_segment
+ORDER BY avg_price;
 GO

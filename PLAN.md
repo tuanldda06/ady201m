@@ -87,7 +87,8 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 **Output**
 
 * Dataset đã làm sạch.
-* Notebook tiền xử lý dữ liệu.
+* `clean_raw.ipynb`: tạo `zillow_clean.csv` từ dữ liệu raw/enriched.
+* `prepare_final.ipynb`: tạo `zillow_final.csv` cho EDA và Modeling.
 
 ---
 
@@ -142,20 +143,26 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 * Huấn luyện các mô hình:
 
   * Linear Regression
-  * Decision Tree Regressor
   * Random Forest Regressor
+  * XGBoost Regressor
 
 * So sánh hiệu năng giữa các mô hình.
 
-* Tối ưu Random Forest bằng RandomizedSearchCV.
+* Tối ưu Random Forest và XGBoost bằng RandomizedSearchCV.
+
+* Đánh giá độ ổn định bằng Cross-validation.
 
 * Đánh giá mô hình bằng:
 
   * MAE
+  * Median AE
   * RMSE
   * R² Score
+  * MAPE
 
 * Phân tích Feature Importance.
+
+* Phân tích sai số theo phân khúc giá và loại nhà.
 
 * Chọn mô hình cuối cùng.
 
@@ -240,6 +247,7 @@ Mục tiêu của dự án là xây dựng một mô hình Machine Learning có 
 
 * Xây dựng thành công mô hình dự đoán giá nhà.
 * So sánh nhiều thuật toán hồi quy để lựa chọn mô hình phù hợp.
-* Đạt mô hình có độ chính xác cao (đánh giá bằng MAE, RMSE và R²).
+* Đạt mô hình có độ chính xác cao (đánh giá bằng MAE, Median AE, RMSE, R² và MAPE).
 * Phân tích các yếu tố ảnh hưởng lớn nhất đến giá nhà thông qua Feature Importance.
+* Có Cross-validation, Hyperparameter Tuning và Error Analysis để tăng tính khoa học của kết quả.
 * Hoàn thiện quy trình Data Science từ thu thập dữ liệu, tiền xử lý, trực quan hóa, xây dựng mô hình đến đánh giá kết quả.
