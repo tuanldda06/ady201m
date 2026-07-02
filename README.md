@@ -54,7 +54,8 @@ Dữ liệu gốc được crawl từ Zillow theo các ZIP code ở California, 
 - FEMA National Risk Index: điểm rủi ro tổng thể, thiệt hại, dễ tổn thương xã hội, phục hồi, cháy rừng, động đất, nắng nóng.
 - Geo distance: khoảng cách đến thành phố lớn, sân bay lớn và bờ biển California.
 
-Dataset cuối cùng nằm tại `data_csv/zillow_final.csv`:
+Dataset cuối cùng nằm tại `data_csv/zillow_final.csv`
+
 
 
 ## Quy Trình Xử Lý
