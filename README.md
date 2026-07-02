@@ -42,7 +42,8 @@ ady201m/
     ├── model_advanced.ipynb
     ├── linear_regression.ipynb
     ├── random_forest.ipynb
-    └── xgboost.ipynb
+    ├── xgboost.ipynb
+    └── README.md
 ```
 
 ## Dữ Liệu
@@ -104,5 +105,4 @@ database/schema.sql
 database/insert_data.sql
 database/query_data.sql
 ```
-
 
